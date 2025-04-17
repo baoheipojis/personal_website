@@ -18,7 +18,7 @@ export default navbar([
         text: "复现Attention Is All You Need",
         icon: "pen-to-square",
         link:
-          "/posts/技术/LLM/复现Attention Is All You Need.html",
+          "/posts/技术/llm/复现Attention Is All You Need.html",
       }
 
     ]
