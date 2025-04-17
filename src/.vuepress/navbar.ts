@@ -3,11 +3,18 @@ import { navbar } from "vuepress-theme-hope";
 export default navbar([
   "/",
   "/demo/",
+
   {
     text: "博文",
     icon: "pen-to-square",
     prefix: "/posts/",
     children: [
+      {
+        text: "个人认知与价值系统白皮书",
+        icon: "pen-to-square",
+        link:
+          "/posts/个人认知与价值系统白皮书.html",
+      },
       {
         text: "苹果",
         icon: "pen-to-square",
@@ -40,9 +47,7 @@ export default navbar([
       },
       { text: "樱桃", icon: "pen-to-square", link: "cherry" },
       { text: "火龙果", icon: "pen-to-square", link: "dragonfruit" },
-      "tomato",
       "strawberry",
-      { text: "生活", icon: "pen-to-square", link: "tomato" },
     ],
   },
   {
