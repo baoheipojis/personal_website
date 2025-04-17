@@ -7,8 +7,7 @@ export default hopeTheme({
   hostname: "https://mister-hope.github.io",
 
   author: {
-    name: "Mr.Hope",
-    url: "https://mister-hope.com",
+    name: "Pojis",
   },
 
   logo: "https://theme-hope-assets.vuejs.press/logo.svg",

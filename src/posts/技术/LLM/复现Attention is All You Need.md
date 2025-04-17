@@ -10,4 +10,4 @@ tag:
   - 未完工
 ---
 
-# 复现Attention is All You Need
+# 复现Attention Is All You Need
