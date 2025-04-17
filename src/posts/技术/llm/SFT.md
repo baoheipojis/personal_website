@@ -6,8 +6,9 @@ category:
 
 tag:
   - 未完工
-  - 密码学
-  - RSA加密
+  - AI
+  - 大模型
+  - 微调
 ---
 
-# RSA加密
+# SFT
