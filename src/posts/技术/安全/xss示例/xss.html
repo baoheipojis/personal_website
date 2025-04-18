@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <input type="text" id="userInput" placeholder="输入测试内容">
+    <button onclick="showContent()">提交</button>
+    <div id="output"></div>
+
+    <script>
+        function showContent() {
+            const input = document.getElementById("userInput").value;
+            document.getElementById("output").innerHTML = "您输入的内容是：" + input; // 漏洞点
+        }
+    </script>
+</body>
+
+</html>
