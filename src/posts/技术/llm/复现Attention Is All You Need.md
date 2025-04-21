@@ -29,8 +29,88 @@ Attention Is All You Need这个论文相信懂点AI的人没有不知道的。�
 这不完全是出于自己的兴趣，是因为南大有一门“科研实践”课程，让大二和大三的同学们感受一下科研。导师是做NLP的，给了我们几个课题。包括复现Attention Is All You Need, ReAct等等，或者是跑一些线上研究，像是大模型推理能力、数学能力、常识等等。当时第一个就是复现Attention Is All You Need，看见她的第一眼，我就知道我不会再选别的课题了，而且我还很担心这个课题被别人抢走，所以老师问的时候我马上抢答了。
 
 下面我们就开始复现了，在复现之前，先记住这个图：
-![Transformer 结构](image.png)
+![Transformer 结构](Transformer结构.jpg)
 这是原论文里给出的图
+
+## 模型结构
+先到论文的最后部分检查一下超参数：
+
+```Python
+# model.py
+import torch
+import torch.nn as nn
+import math
+from encoder import EncoderLayer
+from decoder import DecoderLayer
+from positional_encoding import PositionalEncoding
+
+class Transformer(nn.Module):
+    """
+    Transformer 模型类，实现基于 Encoder-Decoder 架构的翻译模型。
+
+    Args:
+        d_mode (int): 模型隐藏层维度，也就是每个 token 的嵌入向量维度，通常设为 512。
+        nhead (int): 多头注意力机制中的头数，必须能被 d_mode 整除，例如 512/8 = 64，每个头负责处理子空间的信息。
+        num_encoder_layers (int): 编码器（Encoder）的层数，原论文中通常为 6。
+        num_decoder_layers (int): 解码器（Decoder）的层数，原论文中通常为 6。
+        d_ff (int): 前馈神经网络（Feed-Forward Network）的隐藏层维度，通常比 d_mode 大很多（例如 2048）。
+        vocab_size (int): 词汇表大小，表示可处理的唯一 token 数量。根据具体任务和分词策略，一般为 32000 或其他数值。
+        max_len (int): 模型能处理的最大序列长度，用于位置编码，通常设为 512。
+    """
+    def __init__(self, d_mode=512, nhead=8, num_encoder_layers=6, num_decoder_layers=6, d_ff=2048, vocab_size=32000, max_len=512):
+        super(Transformer, self).__init__()
+        
+        self.input_embedding = nn.Embedding(src_vocab_size, d_model)  # 编码器端
+        self.output_embedding = nn.Embedding(tgt_vocab_size, d_model) # 解码器端
+        # 这是论文3.4节提到的缩放因子
+        self.scale = math.sqrt(d_model)        # added scale factor
+        self.positional_encoding = PositionalEncoding(d_model, max_len)
+        
+        # 通过 Encoder 层堆叠
+        self.encoder = nn.ModuleList([EncoderLayer(d_model, nhead, d_ff) for _ in range(num_encoder_layers)])
+        
+        # 通过 Decoder 层堆叠
+        self.decoder = nn.ModuleList([DecoderLayer(d_model, nhead, d_ff) for _ in range(num_decoder_layers)])
+        
+        # 输出层
+        self.fc_out = nn.Linear(d_model, vocab_size)
+
+    def forward(self, src, tgt):
+        """
+        前向传播函数。
+
+        Args:
+            src (Tensor): 输入序列，形状为 (batch_size, src_len)。
+            tgt (Tensor): 目标序列，形状为 (batch_size, tgt_len)。
+
+        Returns:
+            Tensor: 模型输出，形状为 (batch_size, tgt_len, vocab_size)。
+        """
+        
+        # 1. 嵌入输入
+        src = self.input_embedding(src) * self.scale
+        tgt = self.output_embedding(tgt) * self.scale
+        
+        # 2. 添加位置编码
+        src = self.positional_encoding(src)
+        tgt = self.positional_encoding(tgt)
+        
+        # 3. 编码器
+        for layer in self.encoder:
+            src = layer(src)
+        
+        # 4. 解码器
+        for layer in self.decoder:
+          # 这里decoder需要接受encoder的输出，以及自己的输入，两部分。图上可以看到，encoder有两根线连到decoder，同时decoder还有自己的输入。
+            tgt = layer(tgt, src)
+        
+        # 5. 输出层
+        output = self.fc_out(tgt)
+        # 眼尖的读者会发现这里相比原论文，少了一层softmax。这是因为不需要显式添加了，我们后面会解释。
+        return output
+```
+
+
 ## 边缘模块
 下面我们从好实现的边缘模块开始。
 ### Embedding
@@ -84,10 +164,14 @@ class PositionalEncoding(nn.Module):
 
 
 ## Attention
-
+既然文章叫Attention Is All You Need，我们自然要看看Attention是什么。
 ## Encoder
 我们人类说话时，有一种先理解，再生成的过程。比如当你听到别人问“吃了没”，我们会先接受到这些语音信号，然后在大脑中理解，明白对方是在问我们有没有吃饭。接着我们再生成对应的答案，吃了或者没吃。很自然的，在自然语言处理中，人们也设计了这两个过程，这就是Encoder-Decoder架构。
 
 ## Decoder
 
 
+## 训练
+这里我们假设读者和我们一样都还不知道模型是怎么训练的。我们这里再介绍一下。
+
+### 准备数据
