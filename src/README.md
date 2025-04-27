@@ -2,8 +2,10 @@
 home: true
 layout: BlogHome
 icon: house
-title: 博客主页
+title: 个人博客
 heroImage: https://theme-hope-assets.vuejs.press/logo.svg
+bgImageStyle: cover
+bgImage: https://upload-bbs.miyoushe.com/upload/2024/07/02/289123318/b3d53630ad71c6af9e8240008af1bca2_250175288217394329.png?x-oss-process=image//resize,s_600/quality,q_80/auto-orient,0/interlace,1/format,png
 heroText: 时间的朋友
 heroFullScreen: true
 tagline: 向着星辰与深渊

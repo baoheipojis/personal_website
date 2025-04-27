@@ -197,6 +197,49 @@ Q和K的维度都是(batch_size, seq_len, $d_k$)，$K^T$的维度是(batch_size,
 V的维度是(batch_size, seq_len, $d_v$)，因此最后得到的结果是(batch_size, seq_len, $d_v$)，
 ### 多头注意力
 接下来我们看看多头注意力，这是论文的3.2.2节提到的，也是首次提出的。
+先看看论文说了一件什么事吧。初始状态下，Q,K,V矩阵的维度是一样的，都是(batch_size, seq_len, $d_model=512$)。$h=8,d_k=d_v=d_model/h=64$。我们使用8个头，每个头的处理是一样的：使用三个权重矩阵$W_i^Q,W_i^K,W_i^V$（显然，它们的维度应该是(512,64)，把Q,K,V从512维变成64维。然后根据上一节提到的缩放点积注意力，得到一个(batch_size, seq_len, $d_v=64$)的结果矩阵。8个头都得到一个64维的矩阵，最后拼起来就还是512维了。最后再乘一个权重矩阵$W^O$，得到最终的输出(batch_size, seq_len, $d_model=512$)。
+### 代码实现
+在代码实现中我们有一个变化就是，所有的头的权重矩阵合并起来，它们的大小都是(512,512)，是8个(512,64)权重矩阵拼起来的。思考一下是不是。Q是(b,s, 512)，我们把它和8个(512,64)的矩阵相乘得到的结果（每一个是(b,s,64)）再在最后一个维度上拼起来，效果和一个(512,512)的矩阵相乘是一样的。这我就不再多说明了，只要读者知道矩阵乘法是怎么做的就可以自行验证。
+那么，最后得到的一个矩阵大小是(b,s,512)，其中最后一维是分成了8个头的，原本0号头就是在矩阵里的(b,s,0-63)，1号头在(b,s,64-127)以此类推。
+接下来我们开始做缩放点积注意力，
+```python
+class MultiHeadAttention(nn.Module):
+    def __init__(self, hidden_dim, num_heads):
+        super().__init__()
+        # 初始化参数，默认为512维，8个头
+        assert hidden_dim % num_heads == 0, "hidden_dim must be divisible by num_heads"
+        self.hidden_dim = hidden_dim
+        self.num_heads = num_heads
+        self.head_dim = hidden_dim // num_heads
+        # 这里权重矩阵就是(512,512)了。
+        self.wq = nn.Linear(hidden_dim, hidden_dim)
+        self.wk = nn.Linear(hidden_dim, hidden_dim)
+        self.wv = nn.Linear(hidden_dim, hidden_dim)
+        self.wo = nn.Linear(hidden_dim, hidden_dim)
+        
+    def forward(self, q, k, v, mask=None):
+        batch_size = q.size(0)
+        seq_len = q.size(1)
+
+        # 分头处理
+        Q = self.wq(q).reshape(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        K = self.wk(k).reshape(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        V = self.wv(v).reshape(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        # 最后变成了一个(b,nh,s,hd)的矩阵，把nh放到第二维，方便模拟处理多头。
+        # 计算注意力分数。Q是(b,nh,s,hd)，K^T是(b,nh,hd,s)，乘起来是(b,nh,s,s)，和我们之前的分析一致。
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.head_dim)
+        if mask is not None:
+            # 把mask为0的位置的分数设为一个很小的值，-1e9。这样在softmax的时候就会被忽略掉。
+            scores = scores.masked_fill(mask == 0, -1e9)
+        # 在最后一个维度上做softmax
+        attn = torch.softmax(scores, dim=-1)
+        # V是(b,nh,s,hd)，attn是(b,nh,s,s)，乘起来是(b,nh,s,hd)
+        output = torch.matmul(attn, V)
+        
+        # 现在我们要把output的维度从(b,8,s,64)变成(b,s,512)。
+        output = output.transpose(1, 2).reshape(batch_size, seq_len, self.hidden_dim)
+        return self.wo(output)
+```
 
 ## Encoder
 我们人类说话时，有一种先理解，再生成的过程。比如当你听到别人问“吃了没”，我们会先接受到这些语音信号，然后在大脑中理解，明白对方是在问我们有没有吃饭。接着我们再生成对应的答案，吃了或者没吃。很自然的，在自然语言处理中，人们也设计了这两个过程，这就是Encoder-Decoder架构。
