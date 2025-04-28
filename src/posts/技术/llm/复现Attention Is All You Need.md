@@ -240,12 +240,82 @@ class MultiHeadAttention(nn.Module):
         output = output.transpose(1, 2).reshape(batch_size, seq_len, self.hidden_dim)
         return self.wo(output)
 ```
+好啦，到这里，我们已经实现了这个论文里最核心的部分了，接下来我们看看其它部分吧。
+## 位置前馈网络
+下面我们来到3.3节，在这一节中提到了一个叫**位置前馈网络**(Position-wise Feed-Forward Networks)的东西，回到我们的Tranformer结构图，它就是那个蓝色的Feed Forward的部分。
+它的输入x是Add&Norm的输出，大小是(b,s,d_model)。FFN的公式是：
+$$
+FFN(x) = max(0, xW_1 + b_1)W_2 + b_2
+$$
+很简单，就是线性层+ReLU+线性层。不过维度有点不同。我们这里的W1和W2的维度分别是(d_model, d_ff)和(d_ff, d_model)，d_ff=2048。
+本质上是对每个位置进行的操作，只是我们合成矩阵方便并行化。我们来验算一下：
+先让x乘上W1，得到的结果是(b,s,d_ff)，其中前两个位置固定下来时（例如0,0），最后的这个d_ff维的向量，就是x在(0,0)位置的向量乘上W1的结果。ReLU不影响维度。再乘上W2，同理可知，最后输出的相同位置的向量，还是只和x在(0,0)位置的向量有关。也就是对每个位置都做了同样的操作。
+至于代码实现，那也很简单了
+```python
+class PositionwiseFeedForward(nn.Module):
+    def __init__(self, d_model=512, d_ff=2048):
+        super().__init__()
+        self.fc1 = nn.Linear(d_model, d_ff)
+        self.fc2 = nn.Linear(d_ff, d_model)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        return self.fc2(self.relu(self.fc1(x)))
+```
 
 ## Encoder
 我们人类说话时，有一种先理解，再生成的过程。比如当你听到别人问“吃了没”，我们会先接受到这些语音信号，然后在大脑中理解，明白对方是在问我们有没有吃饭。接着我们再生成对应的答案，吃了或者没吃。很自然的，在自然语言处理中，人们也设计了这两个过程，这就是Encoder-Decoder架构。
 
-## Decoder
+再回到我们的Transformer结构图，Encoder包含Multi-Head Attention、Add&Norm、Feed Forward三个部分，其中Add&Norm并不复杂，我们马上就会讲到，其它两个的实现有点复杂，所以刚才单独说过了。
 
+
+下面我们直接看代码实现，先看看Encoder层。
+```python
+class EncoderLayer(nn.Module):
+    def __init__(self, hidden_dim, num_heads, dropout):
+        super().__init__()
+        self.self_attn = MultiHeadAttention(hidden_dim, num_heads)
+        self.ffn = PositionwiseFeedForward(hidden_dim)
+        self.norm1 = nn.LayerNorm(hidden_dim)
+        self.norm2 = nn.LayerNorm(hidden_dim)
+        # 为什么2个norm，一个dropout呢。这是因为norm是有可学习参数的，两层norm需要区分开，但是dropout就无所谓了，即使是同一个，每次调用的结果也是不一样的。
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, mask):
+        # 这里的attn怎么qkv输入都是x呢？这是因为，可学参数在权重W^Q,W^K,W^V上面，看结构图你也确实可以发现，multi-head attention这个层是由一个输入分成三份输入的。那为什么要用3个x当参数呢？既然都一样就直接用一个x，在attn里用3次不就行了？这是因为一会在decoder里会不一样的，别急。
+        attn_output = self.self_attn(x, x, x, mask)
+        # 这里是5.4提到的，应用dropout和残差连接
+        x = self.norm1(x + self.dropout(attn_output))
+        ffn_output = self.ffn(x)
+        x = self.norm2(x + self.dropout(ffn_output))
+        return x
+```
+Encoder就是把Encoder层给堆起来：
+
+
+## Decoder
+```Python
+class DecoderLayer(nn.Module):
+    def __init__(self, hidden_dim, num_heads, dropout):
+        super().__init__()
+        # decoder有两层attention，一个是self attention，一个是cross attention。cross attention的接受encoder的输出。
+        self.self_attn = MultiHeadAttention(hidden_dim, num_heads)
+        self.cross_attn = MultiHeadAttention(hidden_dim, num_heads)
+        self.ffn = PositionwiseFeedForward(hidden_dim)
+        self.norm1 = nn.LayerNorm(hidden_dim)
+        self.norm2 = nn.LayerNorm(hidden_dim)
+        self.norm3 = nn.LayerNorm(hidden_dim)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, enc_output, src_mask, tgt_mask):
+        attn_output = self.self_attn(x, x, x, tgt_mask)
+        x = self.norm1(x + self.dropout(attn_output))
+        attn_output = self.cross_attn(x, enc_output, enc_output, src_mask)
+        x = self.norm2(x + self.dropout(attn_output))
+        ffn_output = self.ffn(x)
+        x = self.norm3(x + self.dropout(ffn_output))
+        return x
+```
 
 ## 训练
 这里我们假设读者和我们一样都还不知道模型是怎么训练的。我们这里再介绍一下。
