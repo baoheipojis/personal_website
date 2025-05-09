@@ -12,7 +12,7 @@ export default navbar([
         text: "个人认知与价值系统白皮书",
         icon: "pen-to-square",
         link:
-          "/posts/个人认知与价值系统白皮书.html",
+          "/posts/杂项/个人认知与价值系统白皮书.html",
       },
       {
         text: "复现Attention Is All You Need",

@@ -294,6 +294,11 @@ Encoder就是把Encoder层给堆起来：
 
 
 ## Decoder
+接下来我们看Decoder。
+先看图。Position Encoding进来，注意了，它这个是Masked Multi-Head Attention，然后add&norm，接着是个Multi-Head Attention，又不一样了，这个Attention的两个输入是来自Encoder的输出的。接着就一样了，Add&Norm和Feed Forward。然后输出。
+
+那么问题来了，这个Cross Attention，QKV到底哪个是来自Encoder，哪个来自Decoder呢？论文的3.2.3的encoder-decoder attention部分给出了答案：Q来自Decoder，K和V来自Encoder的output。
+
 ```Python
 class DecoderLayer(nn.Module):
     def __init__(self, hidden_dim, num_heads, dropout):
@@ -316,8 +321,25 @@ class DecoderLayer(nn.Module):
         x = self.norm3(x + self.dropout(ffn_output))
         return x
 ```
+## Mask
+我们再单独说一下这个Mask。Transformer中有两种mask，我们一个个看：
+### Padding Mask
+Padding Mask就是把输入序列中的<pad>标记的位置设为0，<pad>是用于填充的，使得所有序列长度相同，没有实际意义。
 
+### Look Ahead Mask
+Look Ahead Mask
 ## 训练
 这里我们假设读者和我们一样都还不知道模型是怎么训练的。我们这里再介绍一下。
 
 ### 准备数据
+首先我们拿到平行数据。也就是有src和tgt两个文件，src是中文，tgt是英文，每行都是一个句子。
+
+现在请你思考一个问题，刚才我们什么Attention, Positional Encoding, Encoder-Decoder说了半天，这个模型的输入和输出到底是什么呢？
+
+再去看Transfomer结构图，会发现输入最先进到的是Embedding，那Embedding的输入是什么呢？是一个整数。Embedding干的事就是把整数变成向量。
+
+因此，输入和输出就很明显了：输入是一个整数，代表tokenID。输出是经过softmax后很多个token的概率分布，softmax的结果是一个向量，它的index就是tokenID，值就是概率。
+
+那么，我们就需要做到token到tokenID的映射，这就需要用到一个叫Tokenizer的东西了。
+### Tokenizer
+Tokenizer要做的事就是划分token，并且把token转换成tokenID。
