@@ -353,8 +353,8 @@ Tokenizer要做的事就是划分token，并且把token转换成tokenID。
 
 ### Shift
 再回去看Transformer结构图，你会发现Decoder的输入写着的output(shifted right)，我们之前看过很多次这个图了，但是这部分一直没说。这其实就是一个移位操作。
-假如我们有一个中文句子“我爱你<eos>”，和一个英文句子“I love you <eos>”，假如它们都有是4个token。
-那么，Decoder在训练时，它应该看见的是I love you（这就是向右移了一位了，把最后的<eos>移没了），但是根据这个训练输入，它需要预测出来的是love you <eos>。
+假如我们有一个中文句子“我爱你`<eos>`”，和一个英文句子“I love you `<eos>`”，假如它们都有是4个token。
+那么，Decoder在训练时，它应该看见的是I love you（这就是向右移了一位了，把最后的`<eos>`移没了），但是根据这个训练输入，它需要预测出来的是love you `<eos>`。
 
 ### 标签平滑
 我们给交叉熵损失函数的输入是概率分布和标签。一般情况下，one-hot编码的向量会得到最小的交叉熵损失，也就是说，模型会倾向于得到一个one-hot向量。
@@ -394,4 +394,4 @@ Tokenizer要做的事就是划分token，并且把token转换成tokenID。
 | You love | 0.3 * 0.5 = 0.15 |
 | You hate | 0.3 * 0.3 = 0.09 |
 
-然后，我们从这4条路径中，选出概率最大的2条，这里就是I love和You love。接下来我们继续预测第三个token，依次类推，直到预测出<eos>为止。
+然后，我们从这4条路径中，选出概率最大的2条，这里就是I love和You love。接下来我们继续预测第三个token，依次类推，直到预测出`<eos>`为止。
