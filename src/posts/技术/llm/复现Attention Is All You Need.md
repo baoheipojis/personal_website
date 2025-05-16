@@ -324,7 +324,7 @@ class DecoderLayer(nn.Module):
 ## Mask
 我们再单独说一下这个Mask。Transformer中有两种mask，我们一个个看：
 ### Padding Mask
-Padding Mask就是把输入序列中的<pad>标记的位置设为0，<pad>是用于填充的，使得所有序列长度相同，没有实际意义。
+Padding Mask就是把输入序列中的`<pad>`标记的位置设为0，`<pad>`是用于填充的，使得所有序列长度相同，没有实际意义。
 
 注意，这个mask都是给attention用的，我们在attention中提到过，Muliti-Head Attention的需要应用mask的那个矩阵是Q*K，大小为(batch_size, seq_len, seq_len)，因此，我们的mask的大小要和它能够匹配。
 ### Look Ahead Mask
