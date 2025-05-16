@@ -326,8 +326,11 @@ class DecoderLayer(nn.Module):
 ### Padding Mask
 Padding Mask就是把输入序列中的<pad>标记的位置设为0，<pad>是用于填充的，使得所有序列长度相同，没有实际意义。
 
+注意，这个mask都是给attention用的，我们在attention中提到过，Muliti-Head Attention的需要应用mask的那个矩阵是Q*K，大小为(batch_size, seq_len, seq_len)，因此，我们的mask的大小要和它能够匹配。
 ### Look Ahead Mask
-Look Ahead Mask
+Look Ahead Mask就是每个位置只能看到自己之前的，不能看
+
+
 ## 训练
 这里我们假设读者和我们一样都还不知道模型是怎么训练的。我们这里再介绍一下。
 
@@ -343,3 +346,52 @@ Look Ahead Mask
 那么，我们就需要做到token到tokenID的映射，这就需要用到一个叫Tokenizer的东西了。
 ### Tokenizer
 Tokenizer要做的事就是划分token，并且把token转换成tokenID。
+
+因为Tokenizer不是我们的重点，原论文中也没怎么提，所以我们就不多说。在代码里我们使用的BertTokenizer。
+### 学习率预热
+文章的5.3节提到了一个很重要的技术，叫学习率预热
+
+### Shift
+再回去看Transformer结构图，你会发现Decoder的输入写着的output(shifted right)，我们之前看过很多次这个图了，但是这部分一直没说。这其实就是一个移位操作。
+假如我们有一个中文句子“我爱你<eos>”，和一个英文句子“I love you <eos>”，假如它们都有是4个token。
+那么，Decoder在训练时，它应该看见的是I love you（这就是向右移了一位了，把最后的<eos>移没了），但是根据这个训练输入，它需要预测出来的是love you <eos>。
+
+### 标签平滑
+我们给交叉熵损失函数的输入是概率分布和标签。一般情况下，one-hot编码的向量会得到最小的交叉熵损失，也就是说，模型会倾向于得到一个one-hot向量。
+举个例子：
+假如我们还是在翻译“我爱你”，现在要生成第一个token，我们假设一共就只有三个token，“I”，“love”，“you”，对应tokenid分别是0，1，2。那么，交叉熵损失会让模型倾向于预测[1,0,0]。
+但是有时候我们并不需要它预测成[1,0,0]，比如有时我们希望它有点随机性，预测成[0.9,0.05,0.05]，这就是叫“标签平滑”。标签平滑就是把一个标签的值减掉，平均分给其它标签。
+
+## 推理
+现在，我们已经得到了一个模型。给定一个中文句子和一部分英文句子，它可以输出下一个token的概率分布。那么，拿到了这个概率之后可以怎么做呢？
+### Beam Search
+原论文中使用了一种叫Beam Search的技术，它的思路如下：
+设定一个超参数beam_size，这里我们设为2. 假如我们要翻译“我爱你”，现在想要预测第1个token，概率分布假如是：
+| Token | Prob |
+| ----- | ---- |
+| I     | 0.6  |
+| You   | 0.3  |
+| He    | 0.1  |
+我们每一轮选2个，那么这里选中I和You。接下来我们要预测第二个token了，这边就有两条路径了，因为第一个token有I和You两种情况。
+假如第一个token是I，那么第二个token的概率分布是：
+| Token | Prob |
+| ----- | ---- |
+| love  | 0.7  |
+| hate  | 0.2  |
+| eat   | 0.1  |
+假如第一个token是You，那么第二个token的概率分布是：
+| Token | Prob |
+| ----- | ---- |
+| love  | 0.5  |
+| hate  | 0.3  |
+| eat   | 0.2  |
+
+那么我们就有了4条路径：
+| Path | Prob |
+| ---- | ---- |
+| I love | 0.6 * 0.7 = 0.42 |
+| I hate | 0.6 * 0.2 = 0.12 |
+| You love | 0.3 * 0.5 = 0.15 |
+| You hate | 0.3 * 0.3 = 0.09 |
+
+然后，我们从这4条路径中，选出概率最大的2条，这里就是I love和You love。接下来我们继续预测第三个token，依次类推，直到预测出<eos>为止。
