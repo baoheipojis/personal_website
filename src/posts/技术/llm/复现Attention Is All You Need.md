@@ -395,3 +395,94 @@ Tokenizer要做的事就是划分token，并且把token转换成tokenID。
 | You hate | 0.3 * 0.3 = 0.09 |
 
 然后，我们从这4条路径中，选出概率最大的2条，这里就是I love和You love。接下来我们继续预测第三个token，依次类推，直到预测出`<eos>`为止。
+
+### 推理结果
+由于我们财力有限，这里给出几组数据
+#### Beam Size = 1（贪心）
+BLEU = 7.47  
+Src: 棉花糖必须放在最上面
+Hyp: the sugar sugar has to be on the top.
+Ref: The marshmallow has to be on top.
+--------------------------------------------------
+Src: 这虽然看似简单，其实并不容易 因为它要求人们 迅速地合作
+Hyp: now, it's very simple to see that, because it's easy to cooperate that people are asking for them to cooperate very quickly.
+Ref: And, though it seems really simple, it's actually pretty hard  because it forces people  to collaborate very quickly.
+--------------------------------------------------
+Src: 我觉得这是个有趣的主意 我把它放到了设计专题讨论会上
+Hyp: i think this is an interesting idea, and i put it into a design meeting.
+Ref: And so, I thought this was an interesting idea,  and I incorporated it into a design workshop.
+--------------------------------------------------
+Src: 结果非常成功
+Hyp: and it turns out, it turns out, very successful.
+Ref: And it was a huge success.
+--------------------------------------------------
+Src: 然后花费点时间计划，组织 他们画一下图纸然后拿出意大利面条
+Hyp: and they're going to plan, they're drawing off a diagram and they're going to take a piece of italy.
+Ref: Then they spend some time planning, organizing,  they sketch and they lay out spaghetti.
+#### Beam Size = 5
+BLEU = 8.64   
+Src: 棉花糖必须放在最上面
+Hyp: the sugar candy has to put it on the top.
+Ref: The marshmallow has to be on top.
+--------------------------------------------------
+Src: 这虽然看似简单，其实并不容易 因为它要求人们 迅速地合作
+Hyp: now, it's very easy to look like, because it's not easy to cooperate.
+Ref: And, though it seems really simple, it's actually pretty hard  because it forces people  to collaborate very quickly.
+--------------------------------------------------
+Src: 我觉得这是个有趣的主意 我把它放到了设计专题讨论会上
+Hyp: i think this is an interesting idea, and i put it into a design meeting.
+Ref: And so, I thought this was an interesting idea,  and I incorporated it into a design workshop.
+
+Src: 结果非常成功
+Hyp: it turns out that it's very successful.
+Ref: And it was a huge success.
+--------------------------------------------------
+Src: 然后花费点时间计划，组织 他们画一下图纸然后拿出意大利面条
+Hyp: and then it took time to plan, to organize it, draw them off a diagram and take out the big picture.
+Ref: Then they spend some time planning, organizing,  they sketch and they lay out spaghetti.
+#### Beam Size = 5, length_penalty = 0.6
+
+Src: 棉花糖必须放在最上面
+Hyp: the sugar candy has to put it on the top.
+Ref: The marshmallow has to be on top.
+--------------------------------------------------
+Src: 这虽然看似简单，其实并不容易 因为它要求人们 迅速地合作
+Hyp: now, it's very easy to look like, because it's easy to cooperate very rapidly.
+Ref: And, though it seems really simple, it's actually pretty hard  because it forces people  to collaborate very quickly.
+--------------------------------------------------
+Src: 我觉得这是个有趣的主意 我把它放到了设计专题讨论会上
+Hyp: i think this is an interesting idea, and i put it into a design meeting.
+Ref: And so, I thought this was an interesting idea,  and I incorporated it into a design workshop.
+--------------------------------------------------
+Src: 结果非常成功
+Hyp: it turns out that it's very successful..
+Ref: And it was a huge success.
+--------------------------------------------------
+Src: 然后花费点时间计划，组织 他们画一下图纸然后拿出意大利面条
+Hyp: and then it took time to plan, to organize it, draw them off a diagram and take out the big picture.
+Ref: Then they spend some time planning, organizing,  they sketch and they lay out spaghetti.
+Beam Size = 5, length_penalty = 0.8
+[RESULT] BLEU = 8.54
+#### Beam Size = 10
+--------------------------------------------------
+Src: 棉花糖必须放在最上面
+Hyp: they have to put it on the sugar.
+Ref: The marshmallow has to be on top.
+--------------------------------------------------
+Src: 这虽然看似简单，其实并不容易 因为它要求人们 迅速地合作
+Hyp: now, it's very easy to see that, because it's easy to work very quickly.
+Ref: And, though it seems really simple, it's actually pretty hard  because it forces people  to collaborate very quickly.
+--------------------------------------------------
+Src: 我觉得这是个有趣的主意 我把它放到了设计专题讨论会上
+Hyp: i think this is an interesting idea, and i put it into a design meeting.
+Ref: And so, I thought this was an interesting idea,  and I incorporated it into a design workshop.
+--------------------------------------------------
+Src: 结果非常成功
+Hyp: and it was very successful.
+Ref: And it was a huge success.
+--------------------------------------------------
+Src: 然后花费点时间计划，组织 他们画一下图纸然后拿出意大利面条
+Hyp: they'll take a little bit of time to plan, they'll draw a picture of italy and they'll take it off.
+Ref: Then they spend some time planning, organizing,  they sketch and they lay out spaghetti.
+--------------------------------------------------
+[RESULT] BLEU = 8.85
